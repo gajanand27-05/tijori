@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { useTijoriData } from "@/lib/use-tijori-data";
 import { resetDemoData, updateBusiness } from "@/lib/store";
 import { Button } from "@/components/ui/button";
+import { PageTitle } from "@/components/page-title";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -164,6 +165,7 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-6">
+      <PageTitle title="Settings · Tijori" />
       <h1 className="text-3xl font-semibold text-zinc-900">Settings</h1>
 
       {/* Keyed on the business data so the form re-initialises when the store hydrates or changes. */}

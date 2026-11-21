@@ -12,6 +12,7 @@ import { formatINR, formatDate, formatDateLong } from "@/lib/format";
 import { todayISO, addDays } from "@/lib/dates";
 import type { Invoice } from "@/lib/types";
 import { Button } from "@/components/ui/button";
+import { PageTitle } from "@/components/page-title";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -123,6 +124,7 @@ export default function CustomerDetailPage() {
 
   return (
     <div className="space-y-6">
+      <PageTitle title={`${customer.name} · Tijori`} />
       <Link
         href="/app/customers"
         className="inline-flex min-h-[44px] items-center text-base underline"

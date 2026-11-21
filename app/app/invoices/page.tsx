@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { PageTitle } from "@/components/page-title";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SmartCapture } from "@/components/capture/smart-capture";
 import { InvoiceDetailSheet } from "@/components/invoices/invoice-detail-sheet";
@@ -62,6 +63,7 @@ export default function InvoicesPage() {
 
   return (
     <div className="space-y-6">
+      <PageTitle title="Invoices · Tijori" />
       <h1 className="text-3xl font-semibold text-zinc-900">Invoices</h1>
 
       <section className="rounded-2xl border border-emerald-900/10 bg-white p-5 shadow-sm">

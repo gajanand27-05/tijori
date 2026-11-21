@@ -3,6 +3,7 @@
 import { useMemo, useState, useSyncExternalStore } from "react";
 import { toast } from "sonner";
 import { SmartCapture } from "@/components/capture/smart-capture";
+import { PageTitle } from "@/components/page-title";
 import { ChaseFlow } from "@/components/reminders/chase-flow";
 import { RemindDialog } from "@/components/reminders/remind-dialog";
 import { AlertCard } from "@/components/today/alert-card";
@@ -91,6 +92,7 @@ export default function TodayPage() {
 
   return (
     <div className="space-y-6">
+      <PageTitle title="Today · Tijori" />
       <GreetingHeader
         greeting={timeGreeting}
         name={firstName}

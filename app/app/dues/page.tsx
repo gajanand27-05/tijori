@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { PageTitle } from "@/components/page-title";
 import { RecordPaymentDialog } from "@/components/invoices/invoice-dialogs";
 import { RemindDialog } from "@/components/reminders/remind-dialog";
 import { ChaseFlow } from "@/components/reminders/chase-flow";
@@ -130,6 +131,7 @@ export default function DuesPage() {
 
   return (
     <div className="space-y-6">
+      <PageTitle title="Who owes me · Tijori" />
       <header>
         <h1 className="text-xl font-semibold text-green-900">Who owes me</h1>
         <p className="mt-2 text-4xl font-bold tabular-nums text-green-900">

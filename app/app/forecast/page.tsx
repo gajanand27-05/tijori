@@ -28,6 +28,7 @@ import {
 import { chasePlan } from "@/lib/whatif";
 import { Button } from "@/components/ui/button";
 import { ChaseFlow } from "@/components/reminders/chase-flow";
+import { PageTitle } from "@/components/page-title";
 import {
   DEFAULT_WHAT_IF,
   WhatIfPanel,
@@ -67,6 +68,13 @@ function zoneColour(balance: number, buffer: number): string {
 function itemText(item: ForecastItem): string {
   const prefix = item.kind === "in" ? "+" : MINUS;
   return `${prefix}${formatINR(item.amount)}`;
+}
+
+// Signed, coloured net for a day: money in minus money out.
+function netDisplay(net: number): { text: string; className: string } {
+  if (net > 0) return { text: `+${formatINR(net)}`, className: "text-green-700" };
+  if (net < 0) return { text: `${MINUS}${formatINR(Math.abs(net))}`, className: "text-red-700" };
+  return { text: formatINR(0), className: "text-zinc-700" };
 }
 
 function ForecastTooltip({ active, payload }: TooltipContentProps) {
@@ -221,6 +229,7 @@ export default function ForecastPage() {
 
   return (
     <div className="space-y-6">
+      <PageTitle title="Forecast · Tijori" />
       <h1 className="text-3xl font-semibold text-zinc-900">Forecast</h1>
 
       <div role="group" aria-label="Forecast window" className="flex flex-wrap gap-2">
@@ -391,6 +400,7 @@ export default function ForecastPage() {
             {biggestDays.map((day) => {
               const customers = day.items.filter((item) => item.kind === "in");
               const bills = day.items.filter((item) => item.kind === "out");
+              const net = netDisplay(day.cashIn - day.cashOut);
               const customerTotal = customers.reduce((sum, item) => sum + item.amount, 0);
               const namesId = `forecast-names-${day.date}`;
               const namesShown = namesOpen.has(day.date);
@@ -398,8 +408,8 @@ export default function ForecastPage() {
                 <li key={day.date} className="min-w-0 rounded-xl border border-zinc-200 bg-white p-4">
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
                     <span className="font-medium text-zinc-900">{formatDate(day.date)}</span>
-                    <span className="break-words text-sm font-semibold text-zinc-900">
-                      {formatINR(day.cashIn + day.cashOut)}
+                    <span className={`break-words text-sm font-semibold ${net.className}`}>
+                      {net.text}
                     </span>
                   </div>
                   {customers.length > 0 && (

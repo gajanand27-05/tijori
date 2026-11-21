@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { PageTitle } from "@/components/page-title";
 import {
   Dialog,
   DialogClose,
@@ -139,6 +140,7 @@ export default function CustomersPage() {
 
   return (
     <div className="space-y-6">
+      <PageTitle title="Customers · Tijori" />
       <header className="flex items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold">Customers</h1>
         <Dialog open={open} onOpenChange={handleOpenChange}>

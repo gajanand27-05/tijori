@@ -13,6 +13,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { PageTitle } from "@/components/page-title";
 import {
   Dialog,
   DialogContent,
@@ -116,6 +117,7 @@ export default function BillsPage() {
 
   return (
     <div className="space-y-6">
+      <PageTitle title="Bills · Tijori" />
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold">Bills</h1>
         <p className="text-lg font-medium">
