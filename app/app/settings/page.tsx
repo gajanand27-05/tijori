@@ -26,6 +26,7 @@ type Draft = {
   cashInHand: string;
   safetyBuffer: string;
   defaultDueDays: string;
+  upiId: string;
 };
 
 export default function SettingsPage() {
@@ -37,6 +38,7 @@ export default function SettingsPage() {
     cashInHand: String(business.cashInHand),
     safetyBuffer: String(business.safetyBuffer),
     defaultDueDays: String(business.defaultDueDays),
+    upiId: business.upiId ?? "",
   });
   const [resetOpen, setResetOpen] = useState(false);
 
@@ -49,6 +51,7 @@ export default function SettingsPage() {
       cashInHand: String(business.cashInHand),
       safetyBuffer: String(business.safetyBuffer),
       defaultDueDays: String(business.defaultDueDays),
+      upiId: business.upiId ?? "",
     });
   }, [business]);
 
@@ -65,6 +68,7 @@ export default function SettingsPage() {
       cashInHand: Number(draft.cashInHand) || 0,
       safetyBuffer: Number(draft.safetyBuffer) || 0,
       defaultDueDays: Number(draft.defaultDueDays) || 0,
+      upiId: draft.upiId.trim(),
     });
     toast.success("Settings saved");
   }
@@ -106,6 +110,15 @@ export default function SettingsPage() {
             <div className="grid gap-2">
               <Label htmlFor="city">City</Label>
               <Input id="city" value={draft.city} onChange={(e) => update("city", e.target.value)} />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="upiId">UPI ID</Label>
+              <Input
+                id="upiId"
+                value={draft.upiId}
+                placeholder="yourname@upi"
+                onChange={(e) => update("upiId", e.target.value)}
+              />
             </div>
           </CardContent>
         </Card>

@@ -24,6 +24,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { EditCustomerDialog } from "@/components/customers/edit-customer-dialog";
+import { RemindDialog } from "@/components/reminders/remind-dialog";
 
 const MONTH_NAMES = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -61,6 +62,7 @@ export default function CustomerDetailPage() {
   const [pauseFrom, setPauseFrom] = useState(today);
   const [pauseTo, setPauseTo] = useState(addDays(today, 7));
   const [leaveOpen, setLeaveOpen] = useState(false);
+  const [remindOpen, setRemindOpen] = useState(false);
 
   const customer = customers.find((c) => c.id === id);
 
@@ -169,6 +171,15 @@ export default function CustomerDetailPage() {
 
       {/* Actions */}
       <div className="flex flex-wrap gap-2">
+        {outstanding > 0 && (
+          <Button
+            variant="outline"
+            className="min-h-[44px] min-w-[44px] text-base"
+            onClick={() => setRemindOpen(true)}
+          >
+            Remind
+          </Button>
+        )}
         <EditCustomerDialog customer={customer} />
         {customer.status === "active" && (
           <>
@@ -208,6 +219,12 @@ export default function CustomerDetailPage() {
           </Button>
         )}
       </div>
+
+      <RemindDialog
+        customerId={customer.id}
+        open={remindOpen}
+        onClose={() => setRemindOpen(false)}
+      />
 
       {/* Pause dialog */}
       <Dialog open={pauseOpen} onOpenChange={setPauseOpen}>

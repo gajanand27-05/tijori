@@ -7,6 +7,7 @@ export type Business = {
   cashInHand: number;
   safetyBuffer: number;
   defaultDueDays: number;
+  upiId?: string;
 };
 
 export type Customer = {

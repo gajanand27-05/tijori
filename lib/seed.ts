@@ -132,6 +132,7 @@ export function buildSeedData(today: string): AppData {
       cashInHand: SEED_TUNING.cashInHand,
       safetyBuffer: 5000,
       defaultDueDays: 5,
+      upiId: "meenaskitchen@upi",
     },
     customers,
     invoices,
