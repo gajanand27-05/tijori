@@ -53,6 +53,9 @@ const LANGUAGE_OPTIONS: { value: Language; label: string }[] = [
   { value: "kn", label: "ಕನ್ನಡ" },
 ];
 
+const TONE_ORDER: Tone[] = ["gentle", "firm", "final"];
+const LANGUAGE_ORDER: Language[] = ["en", "hi", "kn"];
+
 export function ReminderDraft({
   customerId,
   onSent,
@@ -105,6 +108,12 @@ export function ReminderDraft({
   const text = edited ?? generated;
 
   if (!customer) return null;
+
+  // Smart rewrite: step through the existing tones and languages; the draft regenerates from them.
+  const toneIndex = TONE_ORDER.indexOf(tone);
+  const languageIndex = LANGUAGE_ORDER.indexOf(language);
+  const currentLanguageLabel =
+    LANGUAGE_OPTIONS.find((opt) => opt.value === language)?.label ?? "English";
 
   function send() {
     window.open(whatsappLink(customer!.phone, text), "_blank", "noopener");
@@ -171,6 +180,44 @@ export function ReminderDraft({
             {opt.label}
           </Button>
         ))}
+      </div>
+
+      <div className="flex gap-2" role="group" aria-label="Smart rewrite">
+        <Button
+          type="button"
+          variant="outline"
+          className="h-11 flex-1"
+          disabled={toneIndex <= 0}
+          onClick={() => {
+            setTone(TONE_ORDER[toneIndex - 1]);
+            setEdited(null);
+          }}
+        >
+          Warmer
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          className="h-11 flex-1"
+          disabled={toneIndex >= TONE_ORDER.length - 1}
+          onClick={() => {
+            setTone(TONE_ORDER[toneIndex + 1]);
+            setEdited(null);
+          }}
+        >
+          Firmer
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          className="h-11 flex-1"
+          onClick={() => {
+            setLanguage(LANGUAGE_ORDER[(languageIndex + 1) % LANGUAGE_ORDER.length]);
+            setEdited(null);
+          }}
+        >
+          Translate: {currentLanguageLabel}
+        </Button>
       </div>
 
       <textarea

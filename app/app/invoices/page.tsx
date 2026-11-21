@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SmartCapture } from "@/components/capture/smart-capture";
 import { InvoiceDetailSheet } from "@/components/invoices/invoice-detail-sheet";
 import { InvoiceRow } from "@/components/invoices/invoice-row";
 import { NewInvoiceDialog, RecordPaymentDialog } from "@/components/invoices/invoice-dialogs";
@@ -77,6 +78,8 @@ export default function InvoicesPage() {
             : `${plan.length} ${plan.length === 1 ? "customer" : "customers"} · ${formatINR(planTotal)}`}
         </p>
       </section>
+
+      <SmartCapture />
 
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-lg font-semibold text-zinc-900">Bills</h2>
