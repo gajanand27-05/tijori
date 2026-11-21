@@ -206,7 +206,7 @@ export function WhatIfPanel({
   const preset = () =>
     onChange({
       ...DEFAULT_WHAT_IF,
-      latePayers: { on: true, topN: 3, days: 15 },
+      latePayers: { on: true, topN: 4, days: 15 },
     });
   const reset = () => onChange(DEFAULT_WHAT_IF);
 
@@ -218,7 +218,7 @@ export function WhatIfPanel({
         </h2>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" className="h-11 min-h-[44px]" onClick={preset}>
-            Demo: top 3 pay 15 days late
+            Demo: top 4 pay 15 days late
           </Button>
           <Button variant="outline" className="h-11 min-h-[44px]" onClick={reset}>
             Reset

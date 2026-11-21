@@ -1,23 +1,25 @@
 import { Button } from "@/components/ui/button";
-import { formatINR } from "@/lib/format";
+import { formatDate, formatINR } from "@/lib/format";
 
 export function BadDayBanner({
   lateCount,
   lateTotal,
   topNames,
-  coversRent,
+  coversBill,
   doneCount,
   onStart,
 }: {
   lateCount: number;
   lateTotal: number;
   topNames: string[];
-  coversRent: boolean;
+  coversBill: { name: string; date: string } | null;
   doneCount: number;
   onStart: () => void;
 }) {
   const total = topNames.length;
-  const plan = coversRent ? "Start with these 3; that covers your rent." : "Start with these 3.";
+  const plan = coversBill
+    ? `Start with these ${total}; that covers ${coversBill.name} on ${formatDate(coversBill.date)}.`
+    : `Start with these ${total}.`;
   return (
     <section className="space-y-3 rounded-2xl border border-amber-400 bg-amber-50 p-5 text-amber-950">
       <p className="text-base font-semibold">

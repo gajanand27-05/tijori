@@ -113,8 +113,12 @@ export default function ForecastPage() {
   // With no card on, result is the baseline, so the page looks as it did before.
   const result = scenarioResult ?? baseline;
   const comparison = scenarioResult ? compareToBaseline(baseline, scenarioResult) : null;
-  const shortfall = comparison?.shortfall ?? 0;
-  const chase = shortfall > 0 ? chasePlan(data, today, shortfall) : null;
+  // Chase back up to the safety buffer, not just to zero.
+  const gapToBuffer = scenarioResult ? data.business.safetyBuffer - result.lowest.balance : 0;
+  const chase = gapToBuffer > 0 ? chasePlan(data, today, gapToBuffer) : null;
+  const chaseNames = chase
+    ? chase.customerIds.map((id) => data.customers.find((c) => c.id === id)?.name ?? id)
+    : [];
   const chartData = useMemo(
     () =>
       scenarioResult
@@ -220,16 +224,19 @@ export default function ForecastPage() {
             <p className="text-sm text-zinc-700">No overdue customers to chase yet.</p>
           ) : (
             <>
-              <p className="text-sm text-zinc-800">
-                Chase{" "}
-                {chase.customerIds.length === 1
-                  ? "this customer"
-                  : `these ${chase.customerIds.length} customers`}{" "}
-                ({formatINR(chase.total)} overdue) to cover it
-              </p>
+              {chase.customerIds.length === 1 ? (
+                <p className="text-sm text-zinc-800">
+                  Chasing {chaseNames[0]} ({formatINR(chase.total)} overdue) covers it.
+                </p>
+              ) : (
+                <p className="text-sm text-zinc-800">
+                  Chase these {chase.customerIds.length} customers ({formatINR(chase.total)} overdue) to get
+                  back above your {formatINR(buffer)} buffer.
+                </p>
+              )}
               <ul className="list-disc space-y-1 pl-5 text-sm text-zinc-800">
-                {chase.customerIds.map((id) => (
-                  <li key={id}>{data.customers.find((c) => c.id === id)?.name ?? id}</li>
+                {chaseNames.map((name, i) => (
+                  <li key={chase.customerIds[i]}>{name}</li>
                 ))}
               </ul>
               <Button
@@ -237,7 +244,7 @@ export default function ForecastPage() {
                 className="h-11 min-h-[44px] w-full sm:w-auto"
                 onClick={() => setChaseIds(chase.customerIds)}
               >
-                Remind them
+                {chase.customerIds.length === 1 ? `Chase ${chaseNames[0]}` : "Remind them"}
               </Button>
             </>
           )}

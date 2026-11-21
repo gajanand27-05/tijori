@@ -57,10 +57,12 @@ export function ReminderDraft({
   customerId,
   onSent,
   sendLabel = "Open in WhatsApp",
+  initialTone,
 }: {
   customerId: string;
   onSent: () => void;
   sendLabel?: string;
+  initialTone?: Tone;
 }) {
   const data = useTijoriData();
   const today = todayISO();
@@ -78,7 +80,9 @@ export function ReminderDraft({
     ...unpaid.map((inv) => daysOverdue(inv, today)),
   );
 
-  const [tone, setTone] = useState<Tone>(() => suggestTone(maxOverdue));
+  const [tone, setTone] = useState<Tone>(
+    () => initialTone ?? suggestTone(maxOverdue),
+  );
   const [language, setLanguage] = useState<Language>(
     customer?.language ?? "en",
   );
@@ -198,11 +202,13 @@ export function RemindDialog({
   open,
   onClose,
   onSent,
+  initialTone,
 }: {
   customerId: string;
   open: boolean;
   onClose: () => void;
   onSent?: () => void;
+  initialTone?: Extract<Tone, "gentle" | "firm">;
 }) {
   return (
     <Dialog
@@ -215,9 +221,11 @@ export function RemindDialog({
         <DialogHeader>
           <DialogTitle>Send a reminder</DialogTitle>
         </DialogHeader>
+        {/* Mounted only while open, so tone resets to initialTone on each open. */}
         {open && (
           <ReminderDraft
             customerId={customerId}
+            initialTone={initialTone}
             onSent={() => {
               onSent?.();
               onClose();

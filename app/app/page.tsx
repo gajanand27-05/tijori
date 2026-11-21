@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import { toast } from "sonner";
 import { ChaseFlow } from "@/components/reminders/chase-flow";
 import { RemindDialog } from "@/components/reminders/remind-dialog";
@@ -14,7 +14,6 @@ import {
   billsDueWithin,
   forecastStatusFor,
   greetingFor,
-  isChaseDone,
   owedToYou,
   readDismissed,
   writeDismissed,
@@ -27,19 +26,33 @@ import { useTijoriData } from "@/lib/use-tijori-data";
 
 const BILLS_WINDOW_DAYS = 7;
 
+// The clock is read per render and never needs a live update, so there is nothing to subscribe to.
+const noopSubscribe = () => () => {};
+
 export default function TodayPage() {
   const data = useTijoriData();
   const today = todayISO();
-  const now = new Date();
   const dismissKey = `tijori-dismissed-${today}`;
+
+  // "Good morning" etc. only on the client; the server (and hydration) render "Hello".
+  const timeGreeting = useSyncExternalStore(
+    noopSubscribe,
+    () => greetingFor(new Date().getHours()),
+    () => "Hello",
+  );
+  const firstName = data.business.ownerName.trim().split(/\s+/)[0] || "there";
 
   // Read lazily from localStorage (guarded for SSR inside readDismissed).
   const [dismissed, setDismissed] = useState<string[]>(() => readDismissed(dismissKey));
   // Customers for the ChaseFlow dialog; null means closed.
   const [chaseIds, setChaseIds] = useState<string[] | null>(null);
-  // The 3 customers chosen by "Start chase mode", frozen so progress does not shift when payments change.
-  const [trio, setTrio] = useState<string[]>([]);
+  // True when the open chase was started from the bad-day banner, so its progress counts there.
+  const [chaseFromBanner, setChaseFromBanner] = useState(false);
+  // Done count reported by ChaseFlow while the banner's chase is open.
+  const [bannerDone, setBannerDone] = useState(0);
   const [remindId, setRemindId] = useState<string | null>(null);
+  // Tone the "Do this today" card asked for (e.g. "firm" for a follow-up).
+  const [remindTone, setRemindTone] = useState<"gentle" | "firm" | undefined>(undefined);
 
   const alerts = useMemo(() => buildAlerts(data, today), [data, today]);
   const status = useMemo(() => forecastStatusFor(data, today), [data, today]);
@@ -48,9 +61,6 @@ export default function TodayPage() {
   const bad = useMemo(() => badDay(data, today), [data, today]);
 
   const visible = alerts.filter((a) => !dismissed.includes(a.id));
-
-  const progressIds = trio.length > 0 ? trio : (bad?.topIds ?? []);
-  const doneCount = progressIds.filter((id) => isChaseDone(data, id, today)).length;
 
   function dismiss(id: string) {
     const next = [...dismissed, id];
@@ -62,8 +72,14 @@ export default function TodayPage() {
     const action = alert.action;
     if (!action) return;
     if (action.type === "remind") {
-      setRemindId((action.payload as { customerId: string }).customerId);
+      const { customerId, tone } = action.payload as {
+        customerId: string;
+        tone?: "gentle" | "firm";
+      };
+      setRemindId(customerId);
+      setRemindTone(tone);
     } else if (action.type === "chase") {
+      setChaseFromBanner(false);
       setChaseIds((action.payload as { customerIds: string[] }).customerIds);
     } else if (action.type === "generateInvoices") {
       const { month } = action.payload as { month: string };
@@ -74,7 +90,11 @@ export default function TodayPage() {
 
   return (
     <div className="space-y-6">
-      <GreetingHeader greeting={greetingFor(now.getHours())} dateLabel={formatDateLong(today)} />
+      <GreetingHeader
+        greeting={timeGreeting}
+        name={firstName}
+        dateLabel={formatDateLong(today)}
+      />
 
       <StatTiles cashInHand={data.business.cashInHand} owed={owed} billsSoon={billsSoon} />
 
@@ -85,10 +105,10 @@ export default function TodayPage() {
           lateCount={bad.lateCount}
           lateTotal={bad.lateTotal}
           topNames={bad.topNames}
-          coversRent={bad.coversRent}
-          doneCount={doneCount}
+          coversBill={bad.coversBill}
+          doneCount={bannerDone}
           onStart={() => {
-            setTrio(bad.topIds);
+            setChaseFromBanner(true);
             setChaseIds(bad.topIds);
           }}
         />
@@ -115,12 +135,14 @@ export default function TodayPage() {
         customerId={remindId ?? ""}
         open={remindId !== null}
         onClose={() => setRemindId(null)}
+        initialTone={remindTone}
       />
 
       <ChaseFlow
         customerIds={chaseIds ?? []}
         open={chaseIds !== null}
         onClose={() => setChaseIds(null)}
+        onProgress={chaseFromBanner ? (done) => setBannerDone(done) : undefined}
       />
     </div>
   );

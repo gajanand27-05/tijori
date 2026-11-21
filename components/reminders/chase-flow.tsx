@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -19,10 +19,12 @@ export function ChaseFlow({
   customerIds,
   open,
   onClose,
+  onProgress,
 }: {
   customerIds: string[];
   open: boolean;
   onClose: () => void;
+  onProgress?: (doneCount: number, total: number) => void;
 }) {
   return (
     <Dialog
@@ -36,7 +38,13 @@ export function ChaseFlow({
           <DialogTitle>Chase customers</DialogTitle>
         </DialogHeader>
         {/* Mounted only while open, so index and sentCount reset on each open. */}
-        {open && <ChaseSteps customerIds={customerIds} onClose={onClose} />}
+        {open && (
+          <ChaseSteps
+            customerIds={customerIds}
+            onClose={onClose}
+            onProgress={onProgress}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );
@@ -45,14 +53,27 @@ export function ChaseFlow({
 function ChaseSteps({
   customerIds,
   onClose,
+  onProgress,
 }: {
   customerIds: string[];
   onClose: () => void;
+  onProgress?: (doneCount: number, total: number) => void;
 }) {
   const data = useTijoriData();
   const [index, setIndex] = useState(0);
   const [sentCount, setSentCount] = useState(0);
   const total = customerIds.length;
+
+  // Keep the latest callback in a ref so the open-time call never goes stale.
+  const onProgressRef = useRef(onProgress);
+  useEffect(() => {
+    onProgressRef.current = onProgress;
+  });
+
+  // Report the starting progress once on open (ChaseSteps mounts only while open).
+  useEffect(() => {
+    onProgressRef.current?.(0, total);
+  }, [total]);
 
   if (index >= total) {
     return (
@@ -88,8 +109,11 @@ function ChaseSteps({
         customerId={currentId}
         sendLabel="Send & next"
         onSent={() => {
-          setSentCount((c) => c + 1);
+          // Only "Send & next" reaches here; Skip does not count.
+          const nextCount = sentCount + 1;
+          setSentCount(nextCount);
           setIndex((i) => i + 1);
+          onProgressRef.current?.(nextCount, total);
         }}
       />
       <DialogFooter>

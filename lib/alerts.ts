@@ -85,8 +85,13 @@ function shortfallAlerts(data: AppData, today: string): Alert[] {
   const n = plan.customerIds.length;
   const covered = plan.total >= needed;
   let action: AlertAction | undefined;
-  if (covered) {
-    sentences.push(n === 1 ? "Chasing this one covers it." : `Chasing these ${n} covers it.`);
+  if (covered && n === 1) {
+    const only = plan.customerIds[0];
+    const name = data.customers.find((c) => c.id === only)?.name ?? "this customer";
+    sentences.push(`Chasing ${name} (${formatINR(plan.total)} overdue) covers it.`);
+    action = { label: `Chase ${name}`, type: "chase", payload: { customerIds: plan.customerIds } };
+  } else if (covered) {
+    sentences.push(`Chasing these ${n} covers it.`);
     action = { label: `Chase all ${n}`, type: "chase", payload: { customerIds: plan.customerIds } };
   } else {
     sentences.push("Chasing overdue customers won't cover it alone.");

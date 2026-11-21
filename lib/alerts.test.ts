@@ -96,8 +96,39 @@ describe("buildAlerts", () => {
     const a = shortfalls[0];
     expect(a.priority).toBe(1);
     expect(a.title).toBe("Rent ₹15,000 is due on 5 Dec.");
-    expect(a.detail).toBe("You'll be ₹5,000 short. Chasing this one covers it.");
-    expect(a.action).toEqual({ label: "Chase all 1", type: "chase", payload: { customerIds: ["c1"] } });
+    expect(a.detail).toBe("You'll be ₹5,000 short. Chasing Rahul Bhatia (₹20,000 overdue) covers it.");
+    expect(a.action).toEqual({ label: "Chase Rahul Bhatia", type: "chase", payload: { customerIds: ["c1"] } });
+  });
+
+  it("names the single customer in the action label and the detail when one customer covers the gap", () => {
+    // Sunita owes 20,000 overdue (due 1 Nov). Same cash, buffer and rent as above -> needs 10,000 back to the buffer.
+    const d = data({
+      cashInHand: 10000,
+      safetyBuffer: 5000,
+      customers: [customer("c9", "Sunita Rao")],
+      invoices: [invoice("i9", "c9", 20000, "2025-11-01")],
+      bills: [{ id: "b1", name: "Rent", category: "rent", amount: 15000, recurrence: { type: "monthly", day: 5 } }],
+    });
+    const [a] = ofKind(buildAlerts(d, TODAY), "shortfall");
+    expect(a.action?.label).toBe("Chase Sunita Rao");
+    expect(a.action?.label).not.toMatch(/Chase all 1|these 1/);
+    expect(a.detail).toBe("You'll be ₹5,000 short. Chasing Sunita Rao (₹20,000 overdue) covers it.");
+    expect(a.detail).not.toMatch(/these 1|this one/);
+  });
+
+  it("uses plural wording when two customers together cover the gap", () => {
+    // Two customers owe 6,000 each overdue; neither alone reaches the 10,000 needed to get back to the buffer.
+    const d = data({
+      cashInHand: 10000,
+      safetyBuffer: 5000,
+      customers: [customer("c1", "Rahul Bhatia"), customer("c2", "Priya")],
+      invoices: [invoice("i1", "c1", 6000, "2025-11-01"), invoice("i2", "c2", 6000, "2025-11-01")],
+      bills: [{ id: "b1", name: "Rent", category: "rent", amount: 15000, recurrence: { type: "monthly", day: 5 } }],
+    });
+    const [a] = ofKind(buildAlerts(d, TODAY), "shortfall");
+    expect(a.detail).toBe("You'll be ₹5,000 short. Chasing these 2 covers it.");
+    expect(a.action?.label).toBe("Chase all 2");
+    expect(a.action?.payload).toEqual({ customerIds: expect.arrayContaining(["c1", "c2"]) });
   });
 
   it("says chasing will not cover a shortfall and omits the action", () => {

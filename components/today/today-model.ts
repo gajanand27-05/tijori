@@ -1,21 +1,21 @@
 import type { AppData } from "@/lib/types";
 import { billOccurrences } from "@/lib/bills";
 import { addDays } from "@/lib/dates";
-import { amountOutstanding } from "@/lib/invoice";
 import { forecast } from "@/lib/forecast";
 import { chasePriority, customerDues, duesSummary } from "@/lib/dues";
 
 export type ForecastStatus = "Safe" | "Tight" | "Short";
 
 export const BAD_DAY_MIN_LATE = 3;
-const RENT_WINDOW_DAYS = 30;
+const BILL_WINDOW_DAYS = 30;
 
 export type BadDay = {
   lateCount: number;
   lateTotal: number;
   topIds: string[];
   topNames: string[];
-  coversRent: boolean;
+  // The largest bill in the window, named only when the top customers' overdue total covers it.
+  coversBill: { name: string; date: string } | null;
 };
 
 // "Good morning" before 12, "Good afternoon" 12 to 16, "Good evening" from 17.
@@ -48,18 +48,26 @@ export function billsDueWithin(data: AppData, today: string, days: number): numb
   return total;
 }
 
-// Largest single bill occurring from today through `days` ahead; 0 if none.
-function largestBillWithin(data: AppData, today: string, days: number): number {
+// Largest single bill occurrence from today through `days` ahead; null if none.
+function largestBillOccurrence(
+  data: AppData,
+  today: string,
+  days: number,
+): { name: string; amount: number; date: string } | null {
   const end = addDays(today, days);
-  let largest = 0;
+  let largest: { name: string; amount: number; date: string } | null = null;
   for (const bill of data.bills) {
-    if (billOccurrences(bill, today, end).length > 0) largest = Math.max(largest, bill.amount);
+    for (const date of billOccurrences(bill, today, end)) {
+      if (largest === null || bill.amount > largest.amount) {
+        largest = { name: bill.name, amount: bill.amount, date };
+      }
+    }
   }
   return largest;
 }
 
-// Bad day: 3 or more customers overdue. Top 3 by chasePriority; "covers your rent" only if
-// those 3 owe at least the largest bill in the next 30 days.
+// Bad day: 3 or more customers overdue. Top 3 by chasePriority; the bill is named only if
+// those 3 owe at least the largest bill occurrence in the next 30 days.
 export function badDay(data: AppData, today: string): BadDay | null {
   const late = customerDues(data, today).filter((e) => e.daysOverdue > 0);
   if (late.length < BAD_DAY_MIN_LATE) return null;
@@ -70,23 +78,16 @@ export function badDay(data: AppData, today: string): BadDay | null {
     .map((x) => x.e);
   const top = ranked.slice(0, BAD_DAY_MIN_LATE);
   const topTotal = top.reduce((sum, e) => sum + e.totalOwed, 0);
-  const largest = largestBillWithin(data, today, RENT_WINDOW_DAYS);
+  const largest = largestBillOccurrence(data, today, BILL_WINDOW_DAYS);
+  const covers = largest !== null && largest.amount > 0 && topTotal >= largest.amount;
 
   return {
     lateCount: late.length,
     lateTotal: late.reduce((sum, e) => sum + e.totalOwed, 0),
     topIds: top.map((e) => e.customerId),
     topNames: top.map((e) => e.name),
-    coversRent: largest > 0 && topTotal >= largest,
+    coversBill: covers && largest !== null ? { name: largest.name, date: largest.date } : null,
   };
-}
-
-// Approximation of "done": no unpaid invoice left, or already reminded today.
-export function isChaseDone(data: AppData, customerId: string, today: string): boolean {
-  const invoices = data.invoices.filter((inv) => inv.customerId === customerId);
-  const stillOwes = invoices.some((inv) => amountOutstanding(inv) > 0);
-  const remindedToday = invoices.some((inv) => inv.reminders.some((r) => r.date === today));
-  return !stillOwes || remindedToday;
 }
 
 // Dismissed alert ids for today. Storage can be unavailable (private mode), so failures are silent.

@@ -201,9 +201,13 @@ describe("compareToBaseline", () => {
 });
 
 describe("what-if scenarios on seed data", () => {
-  it("latePayers top 3 paying 15 days late takes the balance below zero", () => {
-    const r = forecast({ data: seedData, today: "2026-11-21", days: 30, scenario: { latePayers: { topN: 3, days: 15 } } });
+  it("latePayers top 4 paying 15 days late takes the balance below zero", () => {
+    const base = forecast({ data: seedData, today: "2026-11-21", days: 30 });
+    const r = forecast({ data: seedData, today: "2026-11-21", days: 30, scenario: { latePayers: { topN: 4, days: 15 } } });
+    const cmp = compareToBaseline(base, r);
+    expect(cmp.shortfall).toBeGreaterThan(0);
     expect(r.firstBelowZero).not.toBeNull();
+    expect(cmp.firstBelowZero).not.toBeNull();
   });
 });
 
