@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { forecast } from "./forecast";
+import { forecast, compareToBaseline } from "./forecast";
 import type { AppData } from "./types";
 import { buildSeedData } from "./seed";
 
@@ -110,3 +110,100 @@ describe("forecast on seed data", () => {
     expect(r.assumptions[0].startsWith("Starting cash:")).toBe(true);
   });
 });
+
+describe("what-if scenarios", () => {
+  it("latePayers: the top payer by fee is pushed past the window", () => {
+    const data: AppData = {
+      version: 1,
+      business: biz,
+      customers: [cust("cA", "Asha", "active", 500), cust("cB", "Bilal", "active", 300)],
+      invoices: [
+        inv("iA", "cA", 500, "2025-03-01", "2025-03-12", "2025-03"),
+        inv("iB", "cB", 300, "2025-03-01", "2025-03-12", "2025-03"),
+      ],
+      bills: [],
+    };
+    const base = forecast({ data, today: "2025-03-10", days: 10 });
+    expect(base.totalIn).toBe(800);
+    const r = forecast({ data, today: "2025-03-10", days: 10, scenario: { latePayers: { topN: 1, days: 7 } } });
+    expect(r.totalIn).toBe(300);
+    expect(day(r, "2025-03-15").balance).toBe(1300);
+    expect(r.daily.flatMap((d) => d.items).some((i) => i.label.includes("Asha"))).toBe(false);
+  });
+
+  it("cancellations: the least reliable active customer sends no invoices from next month", () => {
+    const history = { ...inv("iOld", "cA", 500, "2025-02-05", "2025-02-05", "2025-02"), payments: [{ id: "p1", amount: 500, date: "2025-02-15", method: "UPI" as const }] };
+    const data: AppData = {
+      version: 1,
+      business: biz,
+      customers: [cust("cA", "Asha", "active", 500), cust("cB", "Bilal", "active", 300)],
+      invoices: [history],
+      bills: [],
+    };
+    const base = forecast({ data, today: "2025-03-10", days: 40 });
+    expect(base.totalIn).toBe(800);
+    const r = forecast({ data, today: "2025-03-10", days: 40, scenario: { cancellations: { n: 1 } } });
+    expect(r.totalIn).toBe(300);
+    expect(r.daily.flatMap((d) => d.items).some((i) => i.label.includes("Asha"))).toBe(false);
+    expect(r.daily.flatMap((d) => d.items).some((i) => i.label.includes("Bilal"))).toBe(true);
+  });
+
+  it("costSpike: every occurrence of the category costs more, other bills do not", () => {
+    const gas: Bill = { id: "gas", name: "Gas", category: "gas", amount: 100, recurrence: { type: "monthly", day: 12 } };
+    const data: AppData = { version: 1, business: biz, customers: [], invoices: [], bills: [rent, gas] };
+    const base = forecast({ data, today: "2025-03-10", days: 40 });
+    expect(base.totalOut).toBe(600);
+    const r = forecast({ data, today: "2025-03-10", days: 40, scenario: { costSpike: { category: "rent", percent: 50 } } });
+    expect(r.totalOut).toBe(800);
+    expect(day(r, "2025-03-14").items.some((i) => i.kind === "out" && i.amount === 300)).toBe(true);
+    expect(day(r, "2025-04-14").items.some((i) => i.kind === "out" && i.amount === 300)).toBe(true);
+    expect(day(r, "2025-04-12").items.some((i) => i.kind === "out" && i.amount === 100)).toBe(true);
+  });
+
+  it("festivalPause: the lowest-fee customer's future invoice shrinks pro rata", () => {
+    const data: AppData = {
+      version: 1,
+      business: biz,
+      customers: [cust("cA", "Asha", "active", 500), cust("cB", "Bilal", "active", 300)],
+      invoices: [],
+      bills: [],
+    };
+    const base = forecast({ data, today: "2025-03-10", days: 40 });
+    expect(base.totalIn).toBe(800);
+    const r = forecast({
+      data,
+      today: "2025-03-10",
+      days: 40,
+      scenario: { festivalPause: { n: 1, days: 15, startDate: "2025-04-01" } },
+    });
+    // Bilal (fee 300) pauses 1–15 April: 15 of 30 days, so his April invoice is 150.
+    expect(r.totalIn).toBe(650);
+    expect(day(r, "2025-04-09").items.some((i) => i.kind === "in" && i.amount === 150)).toBe(true);
+    expect(day(r, "2025-04-09").items.some((i) => i.kind === "in" && i.amount === 500)).toBe(true);
+  });
+});
+
+describe("compareToBaseline", () => {
+  it("reports shortfall, lowest delta and first day below zero", () => {
+    const data: AppData = { version: 1, business: biz, customers: [], invoices: [], bills: [rent] };
+    const base = forecast({ data, today: "2025-03-10", days: 10 });
+    expect(base.lowest).toEqual({ balance: 800, date: "2025-03-14" });
+    // Rent 200 becomes 2200 (+1000%): balance on 14 Mar is 1000 - 2200 = -1200.
+    const r = forecast({ data, today: "2025-03-10", days: 10, scenario: { costSpike: { category: "rent", percent: 1000 } } });
+    expect(compareToBaseline(base, r)).toEqual({ shortfall: 1200, lowestDelta: -2000, firstBelowZero: "2025-03-14" });
+  });
+
+  it("a forecast compared with itself has no shortfall and no delta", () => {
+    const data: AppData = { version: 1, business: biz, customers: [], invoices: [], bills: [rent] };
+    const base = forecast({ data, today: "2025-03-10", days: 10 });
+    expect(compareToBaseline(base, base)).toEqual({ shortfall: 0, lowestDelta: 0, firstBelowZero: null });
+  });
+});
+
+describe("what-if scenarios on seed data", () => {
+  it("latePayers top 3 paying 15 days late takes the balance below zero", () => {
+    const r = forecast({ data: seedData, today: "2026-11-21", days: 30, scenario: { latePayers: { topN: 3, days: 15 } } });
+    expect(r.firstBelowZero).not.toBeNull();
+  });
+});
+

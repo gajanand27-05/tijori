@@ -5,6 +5,7 @@ import {
   Area,
   AreaChart,
   CartesianGrid,
+  Line,
   ReferenceDot,
   ReferenceLine,
   ResponsiveContainer,
@@ -18,7 +19,23 @@ import type { LucideIcon } from "lucide-react";
 import { useTijoriData } from "@/lib/use-tijori-data";
 import { todayISO } from "@/lib/dates";
 import { formatDate, formatINR } from "@/lib/format";
-import { forecast, type ForecastDay, type ForecastItem } from "@/lib/forecast";
+import {
+  compareToBaseline,
+  forecast,
+  type ForecastDay,
+  type ForecastItem,
+} from "@/lib/forecast";
+import { chasePlan } from "@/lib/whatif";
+import { Button } from "@/components/ui/button";
+import { ChaseFlow } from "@/components/reminders/chase-flow";
+import {
+  DEFAULT_WHAT_IF,
+  WhatIfPanel,
+  anyWhatIfOn,
+  scenarioFromWhatIf,
+  whatIfHeadline,
+  type WhatIfState,
+} from "@/components/forecast/what-if-panel";
 
 type WindowDays = 30 | 60 | 90;
 
@@ -80,10 +97,31 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub: st
 export default function ForecastPage() {
   const [days, setDays] = useState<WindowDays>(30);
   const [assumptionsOpen, setAssumptionsOpen] = useState(false);
+  const [whatIf, setWhatIf] = useState<WhatIfState>(DEFAULT_WHAT_IF);
+  // Customers to chase; null means the ChaseFlow dialog is closed.
+  const [chaseIds, setChaseIds] = useState<string[] | null>(null);
 
   const today = todayISO();
   const data = useTijoriData();
-  const result = useMemo(() => forecast({ data, today, days }), [data, today, days]);
+  const baseline = useMemo(() => forecast({ data, today, days }), [data, today, days]);
+  const whatIfOn = anyWhatIfOn(whatIf);
+  const scenarioResult = useMemo(
+    () =>
+      whatIfOn ? forecast({ data, today, days, scenario: scenarioFromWhatIf(whatIf, today) }) : null,
+    [data, today, days, whatIf, whatIfOn],
+  );
+  // With no card on, result is the baseline, so the page looks as it did before.
+  const result = scenarioResult ?? baseline;
+  const comparison = scenarioResult ? compareToBaseline(baseline, scenarioResult) : null;
+  const shortfall = comparison?.shortfall ?? 0;
+  const chase = shortfall > 0 ? chasePlan(data, today, shortfall) : null;
+  const chartData = useMemo(
+    () =>
+      scenarioResult
+        ? scenarioResult.daily.map((d, i) => ({ ...d, baseline: baseline.daily[i]?.balance ?? d.balance }))
+        : result.daily,
+    [scenarioResult, baseline, result.daily],
+  );
 
   const buffer = data.business.safetyBuffer;
 
@@ -98,7 +136,7 @@ export default function ForecastPage() {
 
   const { bufferOff, zeroOff } = gradientStops;
 
-  const headline: { Icon: LucideIcon; textClass: string; text: string } = result.firstBelowZero
+  const baseHeadline: { Icon: LucideIcon; textClass: string; text: string } = result.firstBelowZero
     ? {
         Icon: XCircle,
         textClass: "text-red-700",
@@ -114,6 +152,20 @@ export default function ForecastPage() {
           Icon: CheckCircle2,
           textClass: "text-green-700",
           text: `Safe: your lowest point is ${formatINR(result.lowest.balance)} on ${formatDate(result.lowest.date)}.`,
+        };
+  const headline =
+    comparison === null
+      ? baseHeadline
+      : {
+          Icon: comparison.shortfall > 0 ? XCircle : CheckCircle2,
+          textClass: comparison.shortfall > 0 ? "text-red-700" : "text-green-700",
+          text: whatIfHeadline({
+            state: whatIf,
+            today,
+            shortfall: comparison.shortfall,
+            firstBelowZero: comparison.firstBelowZero,
+            lowest: result.lowest,
+          }),
         };
   const HeadlineIcon = headline.Icon;
 
@@ -154,14 +206,53 @@ export default function ForecastPage() {
         ))}
       </div>
 
+      <WhatIfPanel value={whatIf} today={today} onChange={setWhatIf} />
+
       <p className={`flex items-start gap-2 text-base font-medium ${headline.textClass}`}>
         <HeadlineIcon aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0" />
         <span className="min-w-0 break-words">{headline.text}</span>
       </p>
 
+      {chase && (
+        <section className="space-y-2 rounded-xl border border-amber-300 bg-amber-50 p-4">
+          <h2 className="text-base font-semibold text-zinc-900">What should I do?</h2>
+          {chase.customerIds.length === 0 ? (
+            <p className="text-sm text-zinc-700">No overdue customers to chase yet.</p>
+          ) : (
+            <>
+              <p className="text-sm text-zinc-800">
+                Chase{" "}
+                {chase.customerIds.length === 1
+                  ? "this customer"
+                  : `these ${chase.customerIds.length} customers`}{" "}
+                ({formatINR(chase.total)} overdue) to cover it
+              </p>
+              <ul className="list-disc space-y-1 pl-5 text-sm text-zinc-800">
+                {chase.customerIds.map((id) => (
+                  <li key={id}>{data.customers.find((c) => c.id === id)?.name ?? id}</li>
+                ))}
+              </ul>
+              <Button
+                variant="outline"
+                className="h-11 min-h-[44px] w-full sm:w-auto"
+                onClick={() => setChaseIds(chase.customerIds)}
+              >
+                Remind them
+              </Button>
+            </>
+          )}
+        </section>
+      )}
+
+      {scenarioResult && (
+        <p className="text-xs text-zinc-500">
+          Grey dashed line: balance without the what-ifs. Coloured area: with them.
+        </p>
+      )}
+
       <div className="h-[260px] min-w-0 sm:h-[360px]">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={result.daily} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
+          <AreaChart data={chartData} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
             <defs>
               <linearGradient id={GRADIENT_ID} x1="0" y1="0" x2="0" y2="1">
                 <stop offset={0} stopColor="#16a34a" stopOpacity={0.35} />
@@ -205,6 +296,17 @@ export default function ForecastPage() {
               fill={`url(#${GRADIENT_ID})`}
               isAnimationActive={false}
             />
+            {scenarioResult && (
+              <Line
+                type="monotone"
+                dataKey="baseline"
+                stroke="#71717a"
+                strokeWidth={2}
+                strokeDasharray="6 4"
+                dot={false}
+                isAnimationActive={false}
+              />
+            )}
           </AreaChart>
         </ResponsiveContainer>
       </div>
@@ -279,6 +381,12 @@ export default function ForecastPage() {
           </ul>
         )}
       </section>
+
+      <ChaseFlow
+        customerIds={chaseIds ?? []}
+        open={chaseIds !== null}
+        onClose={() => setChaseIds(null)}
+      />
     </div>
   );
 }
