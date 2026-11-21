@@ -1,0 +1,11 @@
+{
+    "nexenAi.autoApprove.writes": true,
+    "nexenAi.autoApprove.terminal": true,
+    "nexenAi.planMode": false,
+    "nexenAi.batchEdit": true,
+    "nexenAi.compatibility.claudeCode": false,
+    "nexenAi.compatibility.cursor": false,
+    "nexenAi.compatibility.otherInstructionFiles": false,
+    "nexenAi.pluginHooks.enabled": false,
+    "nexenAi.deniedCommands": ["rm -rf", "git reset --hard", "git push --force"]
+}
