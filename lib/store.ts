@@ -1,6 +1,7 @@
 import type { AppData, Bill, Business, Customer, Invoice, Payment, Reminder } from "./types";
-import { addDays, todayISO } from "./dates";
+import { monthKey, todayISO } from "./dates";
 import { buildSeedData } from "./seed";
+import { planMonthlyInvoices } from "./billing";
 
 const KEY = "tijori-data-v1";
 
@@ -100,6 +101,22 @@ export function addInvoice(
   commit({ ...cur, invoices: [...cur.invoices, created] });
 }
 
+export function addOneOffInvoice(input: {
+  customerId: string;
+  description: string;
+  amount: number;
+  dueDate: string;
+}): void {
+  addInvoice({
+    customerId: input.customerId,
+    billingMonth: monthKey(input.dueDate),
+    description: input.description,
+    amount: input.amount,
+    issueDate: todayISO(),
+    dueDate: input.dueDate,
+  });
+}
+
 export function addPayment(invoiceId: string, payment: Omit<Payment, "id">): void {
   const cur = current();
   commit({
@@ -143,26 +160,13 @@ export function deleteBill(id: string): void {
   commit({ ...cur, bills: cur.bills.filter((b) => b.id !== id) });
 }
 
-export function generateMonthlyInvoices(
-  month: string,
-  today: string,
-): { created: number; total: number } {
+// Creates exactly the invoices planMonthlyInvoices returns, so the button and the action agree.
+export function generateMonthlyInvoices(month: string): { created: number; total: number } {
   const cur = current();
-  const billed = new Set(
-    cur.invoices.filter((i) => i.billingMonth === month).map((i) => i.customerId),
-  );
-  const fresh: Invoice[] = cur.customers
-    .filter((c) => c.status === "active" && !billed.has(c.id))
-    .map((c) => ({
-      id: crypto.randomUUID(),
-      customerId: c.id,
-      billingMonth: month,
-      amount: c.monthlyFee,
-      issueDate: today,
-      dueDate: addDays(today, cur.business.defaultDueDays),
-      payments: [],
-      reminders: [],
-    }));
+  const fresh: Invoice[] = planMonthlyInvoices(cur, month).map((inv) => ({
+    ...inv,
+    id: crypto.randomUUID(),
+  }));
   if (fresh.length > 0) commit({ ...cur, invoices: [...cur.invoices, ...fresh] });
   return { created: fresh.length, total: fresh.reduce((sum, i) => sum + i.amount, 0) };
 }
