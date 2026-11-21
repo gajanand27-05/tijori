@@ -60,12 +60,12 @@ export default function InvoicesPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-6 p-4 pb-24 md:p-8">
+    <div className="space-y-6">
       <h1 className="text-3xl font-semibold text-zinc-900">Invoices</h1>
 
       <section className="rounded-2xl border border-emerald-900/10 bg-white p-5 shadow-sm">
         <Button
-          className="h-11 w-full bg-emerald-900 text-base text-white hover:bg-emerald-800 sm:w-auto"
+          className="h-11 w-full text-base sm:w-auto"
           disabled={plan.length === 0}
           onClick={generate}
         >

@@ -23,6 +23,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { EditCustomerDialog } from "@/components/customers/edit-customer-dialog";
 
 const MONTH_NAMES = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -65,7 +66,7 @@ export default function CustomerDetailPage() {
 
   if (!customer) {
     return (
-      <main className="mx-auto max-w-2xl space-y-4 p-4">
+      <div className="space-y-6">
         <p className="text-lg">Customer not found</p>
         <Link
           href="/app/customers"
@@ -73,7 +74,7 @@ export default function CustomerDetailPage() {
         >
           ← Customers
         </Link>
-      </main>
+      </div>
     );
   }
 
@@ -88,7 +89,11 @@ export default function CustomerDetailPage() {
     .flatMap((inv) => inv.reminders)
     .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
 
+  // Plain YYYY-MM-DD strings compare correctly as text.
+  const pauseRangeError = pauseTo < pauseFrom ? "The end date can't be before the start date." : null;
+
   function handlePause() {
+    if (pauseRangeError) return;
     updateCustomer(customer!.id, { status: "paused", pauseFrom, pauseTo });
     setPauseOpen(false);
     toast.success(`${customer!.name} paused`);
@@ -115,7 +120,7 @@ export default function CustomerDetailPage() {
   }
 
   return (
-    <main className="mx-auto max-w-2xl space-y-4 p-4">
+    <div className="space-y-6">
       <Link
         href="/app/customers"
         className="inline-flex min-h-[44px] items-center text-base underline"
@@ -133,8 +138,13 @@ export default function CustomerDetailPage() {
           <p className="text-base">
             {customer.plan} · {formatINR(customer.monthlyFee)}/mo
           </p>
-          <div>
+          <div className="flex flex-wrap items-center gap-2">
             <Badge variant="secondary">{STATUS_LABEL[customer.status] ?? customer.status}</Badge>
+            {customer.status === "paused" && customer.pauseFrom && customer.pauseTo && (
+              <span className="text-sm text-muted-foreground">
+                Paused {formatDate(customer.pauseFrom)} – {formatDate(customer.pauseTo)}
+              </span>
+            )}
           </div>
           <p className="text-sm text-muted-foreground">
             Customer since {formatDateLong(customer.startDate)}
@@ -159,6 +169,7 @@ export default function CustomerDetailPage() {
 
       {/* Actions */}
       <div className="flex flex-wrap gap-2">
+        <EditCustomerDialog customer={customer} />
         {customer.status === "active" && (
           <>
             <Button
@@ -225,6 +236,11 @@ export default function CustomerDetailPage() {
                 onChange={(e) => setPauseTo(e.target.value)}
               />
             </div>
+            {pauseRangeError && (
+              <p role="alert" className="text-sm text-red-600">
+                {pauseRangeError}
+              </p>
+            )}
           </div>
           <DialogFooter>
             <Button
@@ -237,6 +253,7 @@ export default function CustomerDetailPage() {
             <Button
               className="min-h-[44px] min-w-[44px] text-base"
               onClick={handlePause}
+              disabled={pauseRangeError !== null}
             >
               Confirm pause
             </Button>
@@ -301,13 +318,28 @@ export default function CustomerDetailPage() {
                 <div>
                   <Badge variant="outline">{INVOICE_STATUS_LABEL[status] ?? status}</Badge>
                 </div>
-                {due <= 0 && paidDate ? (
-                  <p className="text-sm text-muted-foreground">
-                    Paid on {formatDate(paidDate)}
-                  </p>
-                ) : (
+                {inv.payments.length > 0 && (
+                  <ul className="flex flex-col gap-1">
+                    {inv.payments.map((p) => (
+                      <li key={p.id} className="text-sm">
+                        {formatINR(p.amount)} · {p.method} · {formatDate(p.date)}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {due <= 0 ? (
+                  paidDate && (
+                    <p className="text-sm text-muted-foreground">
+                      Paid on {formatDate(paidDate)}
+                    </p>
+                  )
+                ) : status === "overdue" ? (
                   <p className="text-sm text-red-600">
                     {formatINR(due)} due · {late} days late
+                  </p>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    {formatINR(due)} due on {formatDate(inv.dueDate)}
                   </p>
                 )}
               </div>
@@ -338,6 +370,6 @@ export default function CustomerDetailPage() {
           )}
         </CardContent>
       </Card>
-    </main>
+    </div>
   );
 }

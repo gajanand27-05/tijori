@@ -138,7 +138,7 @@ export default function CustomersPage() {
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-col gap-4 p-4 pb-24">
+    <div className="space-y-6">
       <header className="flex items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold">Customers</h1>
         <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -320,6 +320,6 @@ export default function CustomersPage() {
           No customers match this view.
         </p>
       )}
-    </main>
+    </div>
   );
 }

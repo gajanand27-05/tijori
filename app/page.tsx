@@ -8,11 +8,9 @@ export default function Home() {
         <h1 className="text-5xl font-semibold text-primary">Tijori</h1>
         <p className="text-lg text-zinc-600">{"Your business's tijori, now smart."}</p>
       </div>
-      <Link href="/app">
-        <Button size="lg" className="h-14 rounded-2xl px-10 text-lg">
-          Open live demo
-        </Button>
-      </Link>
+      <Button size="lg" className="h-14 rounded-2xl px-10 text-lg" render={<Link href="/app" />}>
+        Open live demo
+      </Button>
     </div>
   );
 }
