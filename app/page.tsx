@@ -33,10 +33,10 @@ const steps = [
 
 const chips = [
   { label: "Tiffin services", status: "Live" },
-  { label: "Tutors", status: null },
-  { label: "Gyms & yoga", status: null },
-  { label: "Milk delivery", status: null },
-  { label: "Laundry", status: null },
+  { label: "Tutors", status: "Coming soon" },
+  { label: "Gyms & yoga", status: "Coming soon" },
+  { label: "Milk delivery", status: "Coming soon" },
+  { label: "Laundry", status: "Coming soon" },
   { label: "PG hostels", status: "Coming soon" },
 ];
 

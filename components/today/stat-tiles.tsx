@@ -1,13 +1,16 @@
 import Link from "next/link";
 import { formatINR } from "@/lib/format";
 
-const TILE_BASE = "block min-h-11 min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm";
+const TILE_BASE =
+  "block min-h-[44px] min-w-0 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm md:p-4";
 
 function StatTile({ label, value, href }: { label: string; value: number; href?: string }) {
   const body = (
     <>
-      <p className="text-sm text-slate-600">{label}</p>
-      <p className="mt-1 break-words text-2xl font-bold tabular-nums text-slate-900">{formatINR(value)}</p>
+      <p className="text-xs text-slate-600 md:text-sm">{label}</p>
+      <p className="mt-1 break-words text-lg font-bold tabular-nums text-slate-900 md:text-2xl">
+        {formatINR(value)}
+      </p>
     </>
   );
   if (href === undefined) return <div className={TILE_BASE}>{body}</div>;
@@ -28,7 +31,7 @@ export function StatTiles({
   billsSoon: number;
 }) {
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+    <div className="grid grid-cols-3 gap-2 md:gap-3">
       <StatTile label="Cash in hand" value={cashInHand} />
       <StatTile label="Owed to you" value={owed} href="/app/dues" />
       <StatTile label="Bills in the next 7 days" value={billsSoon} href="/app/bills" />

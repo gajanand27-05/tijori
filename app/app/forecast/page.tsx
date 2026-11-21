@@ -41,6 +41,7 @@ type WindowDays = 30 | 60 | 90;
 
 const WINDOWS: WindowDays[] = [30, 60, 90];
 const GRADIENT_ID = "forecast-zones";
+const LINE_GRADIENT_ID = "forecast-line-zones";
 const MINUS = "\u2212";
 
 function shortRupees(v: number): string {
@@ -54,6 +55,13 @@ function zoneOffset(value: number, max: number, min: number): number {
   if (max === min) return 0;
   const o = (max - value) / (max - min);
   return Math.min(1, Math.max(0, o));
+}
+
+// Colour of the balance line at a given balance: green safe, amber below buffer, red below zero.
+function zoneColour(balance: number, buffer: number): string {
+  if (balance < 0) return "#dc2626";
+  if (balance < buffer) return "#f59e0b";
+  return "#166534";
 }
 
 function itemText(item: ForecastItem): string {
@@ -100,6 +108,16 @@ export default function ForecastPage() {
   const [whatIf, setWhatIf] = useState<WhatIfState>(DEFAULT_WHAT_IF);
   // Customers to chase; null means the ChaseFlow dialog is closed.
   const [chaseIds, setChaseIds] = useState<string[] | null>(null);
+  // Days whose customer-payment names are expanded in "Biggest days".
+  const [namesOpen, setNamesOpen] = useState<Set<string>>(() => new Set());
+  function toggleNames(date: string) {
+    setNamesOpen((prev) => {
+      const next = new Set(prev);
+      if (next.has(date)) next.delete(date);
+      else next.add(date);
+      return next;
+    });
+  }
 
   const today = todayISO();
   const data = useTijoriData();
@@ -139,6 +157,19 @@ export default function ForecastPage() {
   }, [result.daily, buffer]);
 
   const { bufferOff, zeroOff } = gradientStops;
+
+  // Line colours use the data's own min and max, so 0 and the buffer are mapped by clamping.
+  const lineZones = useMemo(() => {
+    const balances = result.daily.map((d) => d.balance);
+    const max = balances.length > 0 ? Math.max(...balances) : 0;
+    const min = balances.length > 0 ? Math.min(...balances) : 0;
+    return {
+      max,
+      min,
+      bufferOff: zoneOffset(buffer, max, min),
+      zeroOff: zoneOffset(0, max, min),
+    };
+  }, [result.daily, buffer]);
 
   const baseHeadline: { Icon: LucideIcon; textClass: string; text: string } = result.firstBelowZero
     ? {
@@ -269,6 +300,14 @@ export default function ForecastPage() {
                 <stop offset={zeroOff} stopColor="#dc2626" stopOpacity={0.35} />
                 <stop offset={1} stopColor="#dc2626" stopOpacity={0.35} />
               </linearGradient>
+              <linearGradient id={LINE_GRADIENT_ID} x1="0" y1="0" x2="0" y2="1">
+                <stop offset={0} stopColor="#166534" />
+                <stop offset={lineZones.bufferOff} stopColor="#166534" />
+                <stop offset={lineZones.bufferOff} stopColor="#f59e0b" />
+                <stop offset={lineZones.zeroOff} stopColor="#f59e0b" />
+                <stop offset={lineZones.zeroOff} stopColor="#dc2626" />
+                <stop offset={1} stopColor="#dc2626" />
+              </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="#e4e4e7" vertical={false} />
             <XAxis
@@ -293,12 +332,22 @@ export default function ForecastPage() {
               r={5}
               fill="#166534"
               stroke="#ffffff"
-              label={{ value: "Lowest", position: "top", fill: "#166534", fontSize: 12 }}
+              label={{
+                value: `Lowest ${formatINR(result.lowest.balance)}`,
+                position: "top",
+                offset: 14,
+                fill: "#166534",
+                fontSize: 12,
+              }}
             />
             <Area
               type="monotone"
               dataKey="balance"
-              stroke="#166534"
+              stroke={
+                lineZones.max === lineZones.min
+                  ? zoneColour(lineZones.max, buffer)
+                  : `url(#${LINE_GRADIENT_ID})`
+              }
               strokeWidth={2}
               fill={`url(#${GRADIENT_ID})`}
               isAnimationActive={false}
@@ -339,26 +388,59 @@ export default function ForecastPage() {
           <p className="text-sm text-zinc-500">No money moves in this window.</p>
         ) : (
           <ul className="space-y-3">
-            {biggestDays.map((day) => (
-              <li key={day.date} className="min-w-0 rounded-xl border border-zinc-200 bg-white p-4">
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <span className="font-medium text-zinc-900">{formatDate(day.date)}</span>
-                  <span className="break-words text-sm font-semibold text-zinc-900">
-                    {formatINR(day.cashIn + day.cashOut)}
-                  </span>
-                </div>
-                {day.items.length > 0 && (
-                  <ul className="mt-2 space-y-1 text-sm">
-                    {day.items.map((item, i) => (
-                      <li key={`${item.label}-${i}`} className="flex justify-between gap-3">
-                        <span className="min-w-0 truncate text-zinc-600">{item.label}</span>
-                        <span className="shrink-0 text-zinc-900">{itemText(item)}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </li>
-            ))}
+            {biggestDays.map((day) => {
+              const customers = day.items.filter((item) => item.kind === "in");
+              const bills = day.items.filter((item) => item.kind === "out");
+              const customerTotal = customers.reduce((sum, item) => sum + item.amount, 0);
+              const namesId = `forecast-names-${day.date}`;
+              const namesShown = namesOpen.has(day.date);
+              return (
+                <li key={day.date} className="min-w-0 rounded-xl border border-zinc-200 bg-white p-4">
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <span className="font-medium text-zinc-900">{formatDate(day.date)}</span>
+                    <span className="break-words text-sm font-semibold text-zinc-900">
+                      {formatINR(day.cashIn + day.cashOut)}
+                    </span>
+                  </div>
+                  {customers.length > 0 && (
+                    <>
+                      <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-sm">
+                        <p className="min-w-0 break-words text-zinc-700">
+                          {`${customers.length} customer ${customers.length === 1 ? "payment" : "payments"} · ${formatINR(customerTotal)}`}
+                        </p>
+                        <button
+                          type="button"
+                          aria-expanded={namesShown}
+                          aria-controls={namesId}
+                          onClick={() => toggleNames(day.date)}
+                          className="min-h-[44px] text-sm font-medium text-zinc-700 hover:text-zinc-900"
+                        >
+                          {namesShown ? "Hide names" : "Show names"}
+                        </button>
+                      </div>
+                      <ul id={namesId} hidden={!namesShown} className="mt-1 space-y-1 text-sm">
+                        {customers.map((item, i) => (
+                          <li key={`${item.label}-${i}`} className="flex justify-between gap-3">
+                            <span className="min-w-0 truncate text-zinc-600">{item.label}</span>
+                            <span className="shrink-0 text-zinc-900">{itemText(item)}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                  {bills.length > 0 && (
+                    <ul className="mt-2 space-y-1 text-sm">
+                      {bills.map((item, i) => (
+                        <li key={`${item.label}-${i}`} className="flex justify-between gap-3">
+                          <span className="min-w-0 truncate text-zinc-600">{item.label}</span>
+                          <span className="shrink-0 text-zinc-900">{itemText(item)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>
