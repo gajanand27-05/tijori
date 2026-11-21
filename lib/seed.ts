@@ -1,7 +1,7 @@
 import type { AppData, Bill, Customer, Invoice, Language, Payment, Reminder } from "./types";
 import { addDays, addMonths, dateInMonth, monthKey } from "./dates";
 
-export const SEED_TUNING = { cashInHand: 18000 };
+export const SEED_TUNING = { cashInHand: 33000 };
 
 type Plan = Customer["plan"];
 
