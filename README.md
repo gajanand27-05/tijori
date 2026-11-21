@@ -1,6 +1,6 @@
 # Tijori: your business's tijori, now smart.
 
-Tijori is an AI-assisted back office for one-person subscription businesses. It keeps customers, monthly invoices, payments, bills and reminders in one place, and turns them into a 30–90 day cash forecast with "what if" scenarios and a Today screen of next actions. It is built mobile-first, with a bottom nav on phones and a sidebar on desktop, and it runs entirely in the browser.
+Tijori is a smart back office for one-person subscription businesses. It keeps customers, monthly invoices, payments, bills and reminders in one place, and turns them into a 30–90 day cash forecast with "what if" scenarios and a Today screen of next actions. It is built mobile-first, with a bottom nav on phones and a sidebar on desktop, and it runs entirely in the browser.
 
 ## Live demo
 
@@ -16,20 +16,20 @@ Meena runs a home tiffin service in Bengaluru with about 40 monthly subscribers.
 
 | # | Requirement | How Tijori meets it | Screen |
 |---|---|---|---|
-| 1 | Invoice → payment tracking with drafted reminders | Monthly invoices are recorded and payments are tracked against them. Customers who are late get a reminder draft in English, Hindi or Kannada. | Invoices (`/app/invoices`) and the Remind dialog |
-| 2 | "Who owes me, how much, since when" | One list of every customer who owes money, with the amount and the date it has been owed since. | Dues (`/app/dues`) |
-| 3 | 30–90 day cash forecast | A day-by-day running balance from today's cash, shown for 30, 60 or 90 days, with the first day it dips below the safety buffer. | Forecast (`/app/forecast`) |
-| 4 | "What if" scenarios | Four toggles on the forecast: top customers pay late; a customer cancels; vegetable costs rise 10%; a festival pause of 3 customers for 7 days. | Forecast → What-if panel |
-| 5 | Alerts with a clear next action | Each alert states the problem and offers one button, such as "Send reminder", "Send firm reminder" or "Chase all N". | Today (`/app`) |
+| 1 | Invoice → payment tracking with drafted reminders | One tap generates this month's bills for every customer (pro-rata for paused days). Record full or partial payments by UPI or cash. Reminders are drafted in English, Hindi or Kannada in a gentle, firm or final tone, and open in WhatsApp with the message filled in. | Invoices (`/app/invoices`), Remind dialog |
+| 2 | "Who owes me, how much, since when" | Total owed, ageing buckets (not yet due, 1–7, 8–30, 30+ days), and one card per customer with amount, oldest unpaid date and last reminder, sorted by "chase first". | Dues (`/app/dues`) |
+| 3 | 30–90 day cash forecast | A day-by-day running balance from today's cash for 30, 60 or 90 days, using each customer's own payment delay. Shows the lowest point and the first day below the safety buffer, with the assumptions in plain English. | Forecast (`/app/forecast`) |
+| 4 | "What if" scenarios | Four scenarios with adjustable sliders: top customers pay late, customers cancel, costs go up, festival pause. A one-tap demo: "top 4 customers pay 15 days late". Tijori then shows the shortfall and whom to chase to cover it. | Forecast → What if? |
+| 5 | Alerts with a clear next action | "Do this today" cards, each with one button (Send reminder, Chase, View bills, Generate bills). When 3 or more customers are late, a "Rough day" banner starts a step-by-step chase mode. | Today (`/app`) |
 
-## Demo walkthrough (about 5 minutes)
+## Demo walkthrough (about 3 minutes)
 
-1. **Today.** Open the app and read the alerts. Each one names the problem and the next action.
-2. **Dues.** See who owes money, how much, and since when.
-3. **Remind in Hindi.** Open a reminder for a late customer, switch the language to हिंदी, and read the drafted message.
-4. **Forecast.** Pick 30, 60 or 90 days and see when the balance first falls below the ₹5,000 buffer.
-5. **What-if.** Turn on a scenario such as "Customers cancel" and watch the forecast change.
-6. **Smart capture.** Use the quick-entry box to add a payment or an invoice in one step.
+1. **Today.** See "Rent ₹15,000 is due on 5 Dec. You'll have only ₹3,250 left" and the "Rough day" banner.
+2. **Dues.** See who owes what and since when, in ageing buckets.
+3. **Remind.** Open a reminder for Mohan Lal, switch to हिंदी, and tap Open in WhatsApp.
+4. **Forecast.** Switch between 30, 60 and 90 days, see the dip on rent day, and open "How we calculated this".
+5. **What if?** Tap "Demo: top 4 pay 15 days late". You'd be ₹5,150 short on 5 Dec, and Tijori shows whom to chase.
+6. **Smart capture.** On Today, paste "Mohan bhaiya ne 4,200 GPay kiya", tap Read message, then Confirm. The payment is recorded.
 
 ## How the forecast works
 
